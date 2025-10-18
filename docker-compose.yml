@@ -1,0 +1,146 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database with TimescaleDB
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: patchmonitor-postgres
+    environment:
+      POSTGRES_DB: patchmonitor
+      POSTGRES_USER: patchmonitor
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - patchmonitor-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U patchmonitor -d patchmonitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: patchmonitor-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - patchmonitor-network
+    restart: unless-stopped
+
+  # Database initialization
+  db-init:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: patchmonitor-db-init
+    environment:
+      - DATABASE_URL=postgresql://patchmonitor:password@postgres:5432/patchmonitor
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - patchmonitor-network
+    command: python init_db.py
+    restart: "no"
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: patchmonitor-backend
+    environment:
+      - DATABASE_URL=postgresql://patchmonitor:password@postgres:5432/patchmonitor
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - patchmonitor-network
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: patchmonitor-frontend
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://10.0.0.56:8001
+    depends_on:
+      - backend
+    networks:
+      - patchmonitor-network
+    restart: unless-stopped
+    command: npm run dev
+
+  # Celery Worker for background tasks
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: patchmonitor-celery-worker
+    environment:
+      - DATABASE_URL=postgresql://patchmonitor:password@postgres:5432/patchmonitor
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - patchmonitor-network
+    restart: unless-stopped
+    command: celery -A app.celery worker --loglevel=info
+
+  # Celery Beat for scheduled tasks
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: patchmonitor-celery-beat
+    environment:
+      - DATABASE_URL=postgresql://patchmonitor:password@postgres:5432/patchmonitor
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - patchmonitor-network
+    restart: unless-stopped
+    command: celery -A app.celery beat --loglevel=info
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  patchmonitor-network:
+    driver: bridge

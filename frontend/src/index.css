@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}
+
+@layer components {
+  .status-indicator {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .status-green {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .status-yellow {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  
+  .status-orange {
+    @apply bg-orange-100 text-orange-800;
+  }
+  
+  .status-red {
+    @apply bg-red-100 text-red-800;
+  }
+  
+  .status-gray {
+    @apply bg-gray-100 text-gray-800;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+  }
+  
+  .btn {
+    @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply btn text-white bg-primary hover:bg-blue-700 focus:ring-primary;
+  }
+  
+  .btn-secondary {
+    @apply btn text-gray-700 bg-gray-100 hover:bg-gray-200 focus:ring-gray-500;
+  }
+  
+  .btn-danger {
+    @apply btn text-white bg-danger hover:bg-red-700 focus:ring-danger;
+  }
+}

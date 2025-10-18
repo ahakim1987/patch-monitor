@@ -16,16 +16,14 @@
 
 | # | Issue Description | Location/Page | Status | Notes |
 |---|-------------------|---------------|--------|-------|
-| 1 | [Add issue here] | [Dashboard/Host Profiler/etc] | 🔴 Open | |
-| 2 | | | 🔴 Open | |
-| 3 | | | 🔴 Open | |
-| 4 | | | 🔴 Open | |
-| 5 | | | 🔴 Open | |
-| 6 | | | 🔴 Open | |
-| 7 | | | 🔴 Open | |
-| 8 | | | 🔴 Open | |
-| 9 | | | 🔴 Open | |
-| 10 | | | 🔴 Open | |
+| 1 | Arbitrary data shown in Patch Lag Distribution chart with no hosts added | Dashboard / Patch Lag Distribution | 🔴 Open | Chart shows data when no hosts exist |
+| 2 | Clicking on "Hosts" in left sidebar doesn't do anything - link is dead | Sidebar / Hosts | 🔴 Open | Navigation not working |
+| 3 | Reports page shows arbitrary data (245 hosts, compliance %, vulnerabilities) when no hosts added | Reports / All sections | 🔴 Open | Fake/demo data displayed |
+| 4 | Settings changes not persisted - values reset when navigating away | Settings / General | 🔴 Open | System name, collection interval, data retention don't save |
+| 5 | Settings > Users page - no links work, can't update, no option to add users | Settings / Users | 🔴 Open | Non-functional user management |
+| 6 | Settings > Alerts page - non-functional | Settings / Alerts | 🔴 Open | Can't configure alerts |
+| 7 | Settings > Security page - non-functional | Settings / Security | 🔴 Open | Security settings don't work |
+| 8 | Settings > Database page - non-functional | Settings / Database | 🔴 Open | Database settings don't work |
 
 ---
 

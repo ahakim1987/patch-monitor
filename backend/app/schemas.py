@@ -278,6 +278,17 @@ class VulnerabilityReport(BaseSchema):
     cves_by_severity: Dict[str, List[CVEResponse]]
 
 
+# Settings schemas
+class SettingsUpdate(BaseSchema):
+    """Schema for updating settings."""
+    settings: Dict[str, str]
+
+
+class SettingsResponse(BaseSchema):
+    """Schema for settings response."""
+    settings: Dict[str, str]
+
+
 # Token schemas
 class Token(BaseSchema):
     """Schema for authentication token."""

@@ -1,42 +1,18 @@
 import { useQuery } from 'react-query'
 import { FileText, Download, RefreshCw } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-
-// Mock API for reports - replace with actual API calls
-const mockComplianceReport = {
-  total_hosts: 245,
-  compliant_hosts: 198,
-  compliance_percentage: 80.8,
-  hosts_by_status: {
-    compliant: 198,
-    non_compliant: 32,
-    unknown: 15
-  },
-  critical_vulnerabilities: 12,
-  high_vulnerabilities: 45,
-  medium_vulnerabilities: 78,
-  low_vulnerabilities: 23
-}
-
-const mockVulnerabilityReport = {
-  total_cves: 158,
-  critical_cves: 12,
-  high_cves: 45,
-  medium_cves: 78,
-  low_cves: 23,
-  affected_hosts: 67
-}
+import { reportsApi, ComplianceReport, VulnerabilityReport } from '../api/reports'
 
 export default function ReportsPage() {
-  const { data: complianceReport, isLoading: complianceLoading } = useQuery(
+  const { data: complianceReport, isLoading: complianceLoading } = useQuery<ComplianceReport>(
     'compliance-report',
-    () => Promise.resolve(mockComplianceReport),
+    reportsApi.getComplianceReport,
     { refetchInterval: 300000 } // 5 minutes
   )
 
-  const { data: vulnerabilityReport, isLoading: vulnerabilityLoading } = useQuery(
+  const { data: vulnerabilityReport, isLoading: vulnerabilityLoading } = useQuery<VulnerabilityReport>(
     'vulnerability-report',
-    () => Promise.resolve(mockVulnerabilityReport),
+    reportsApi.getVulnerabilityReport,
     { refetchInterval: 300000 } // 5 minutes
   )
 

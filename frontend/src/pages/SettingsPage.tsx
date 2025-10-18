@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { useAuthStore } from '../stores/authStore'
+import { settingsApi, Settings as SettingsType } from '../api/settings'
 import { 
   Settings, 
   Users, 
@@ -7,13 +9,17 @@ import {
   Shield, 
   Database,
   Save,
-  RefreshCw
+  RefreshCw,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user } = useAuthStore()
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('general')
-  const [isSaving, setIsSaving] = useState(false)
+  const [formData, setFormData] = useState<Partial<SettingsType>>({})
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   const tabs = [
     { id: 'general', name: 'General', icon: Settings },
@@ -23,12 +29,56 @@ export default function SettingsPage() {
     { id: 'database', name: 'Database', icon: Database },
   ]
 
+  // Load settings from API
+  const { data: settingsData, isLoading } = useQuery(
+    'settings',
+    settingsApi.getSettings,
+    {
+      onSuccess: (data) => {
+        setFormData(data.settings)
+      }
+    }
+  )
+
+  // Mutation for saving settings
+  const saveMutation = useMutation(
+    (settings: Partial<SettingsType>) => settingsApi.updateSettings(settings),
+    {
+      onSuccess: (data) => {
+        queryClient.setQueryData('settings', data)
+        setFormData(data.settings)
+        setSaveMessage({ type: 'success', text: 'Settings saved successfully!' })
+        setTimeout(() => setSaveMessage(null), 3000)
+      },
+      onError: (error: any) => {
+        setSaveMessage({ 
+          type: 'error', 
+          text: error.response?.data?.detail || 'Failed to save settings. Please try again.' 
+        })
+        setTimeout(() => setSaveMessage(null), 5000)
+      }
+    }
+  )
+
   const handleSave = async () => {
-    setIsSaving(true)
-    // Implement save functionality
-    setTimeout(() => {
-      setIsSaving(false)
-    }, 1000)
+    saveMutation.mutate(formData)
+  }
+
+  const handleInputChange = (key: string, value: string) => {
+    setFormData(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleCheckboxChange = (key: string, checked: boolean) => {
+    setFormData(prev => ({ ...prev, [key]: checked ? 'true' : 'false' }))
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-gray-600">Loading settings...</span>
+      </div>
+    )
   }
 
   return (
@@ -41,17 +91,33 @@ export default function SettingsPage() {
         </div>
         <button
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={saveMutation.isLoading}
           className="btn btn-primary"
         >
-          {isSaving ? (
+          {saveMutation.isLoading ? (
             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {saveMutation.isLoading ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Save Message */}
+      {saveMessage && (
+        <div className={`flex items-center p-4 rounded-md ${
+          saveMessage.type === 'success' 
+            ? 'bg-green-50 text-green-800 border border-green-200' 
+            : 'bg-red-50 text-red-800 border border-red-200'
+        }`}>
+          {saveMessage.type === 'success' ? (
+            <CheckCircle className="h-5 w-5 mr-2" />
+          ) : (
+            <AlertCircle className="h-5 w-5 mr-2" />
+          )}
+          <span>{saveMessage.text}</span>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar */}
@@ -89,7 +155,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    defaultValue="Linux Patch Monitor"
+                    value={formData.application_name || ''}
+                    onChange={(e) => handleInputChange('application_name', e.target.value)}
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
                   />
                 </div>
@@ -100,7 +167,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="number"
-                    defaultValue="60"
+                    value={formData.collection_interval || ''}
+                    onChange={(e) => handleInputChange('collection_interval', e.target.value)}
                     min="15"
                     max="1440"
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
@@ -113,7 +181,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="number"
-                    defaultValue="90"
+                    value={formData.data_retention_days || ''}
+                    onChange={(e) => handleInputChange('data_retention_days', e.target.value)}
                     min="7"
                     max="365"
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
@@ -168,11 +237,18 @@ export default function SettingsPage() {
                   </label>
                   <div className="mt-2 space-y-2">
                     <label className="flex items-center">
-                      <input type="checkbox" defaultChecked className="rounded border-gray-300 text-primary focus:ring-primary" />
+                      <input 
+                        type="checkbox" 
+                        checked={formData.email_notifications_enabled === 'true'}
+                        onChange={(e) => handleCheckboxChange('email_notifications_enabled', e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary" 
+                      />
                       <span className="ml-2 text-sm text-gray-700">Enable email alerts</span>
                     </label>
                     <input
                       type="email"
+                      value={formData.email_address || ''}
+                      onChange={(e) => handleInputChange('email_address', e.target.value)}
                       placeholder="admin@company.com"
                       className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
                     />
@@ -188,7 +264,8 @@ export default function SettingsPage() {
                       <label className="block text-xs text-gray-500">Patch Lag (days)</label>
                       <input
                         type="number"
-                        defaultValue="30"
+                        value={formData.alert_threshold_patch_lag_days || ''}
+                        onChange={(e) => handleInputChange('alert_threshold_patch_lag_days', e.target.value)}
                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
                       />
                     </div>
@@ -196,7 +273,8 @@ export default function SettingsPage() {
                       <label className="block text-xs text-gray-500">Security Updates</label>
                       <input
                         type="number"
-                        defaultValue="1"
+                        value={formData.alert_threshold_security_updates || ''}
+                        onChange={(e) => handleInputChange('alert_threshold_security_updates', e.target.value)}
                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
                       />
                     </div>
@@ -216,7 +294,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="number"
-                    defaultValue="30"
+                    value={formData.session_timeout_minutes || ''}
+                    onChange={(e) => handleInputChange('session_timeout_minutes', e.target.value)}
                     min="5"
                     max="480"
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
@@ -229,11 +308,21 @@ export default function SettingsPage() {
                   </label>
                   <div className="mt-2 space-y-2">
                     <label className="flex items-center">
-                      <input type="checkbox" defaultChecked className="rounded border-gray-300 text-primary focus:ring-primary" />
+                      <input 
+                        type="checkbox" 
+                        checked={formData.require_strong_passwords === 'true'}
+                        onChange={(e) => handleCheckboxChange('require_strong_passwords', e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary" 
+                      />
                       <span className="ml-2 text-sm text-gray-700">Require strong passwords</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" defaultChecked className="rounded border-gray-300 text-primary focus:ring-primary" />
+                      <input 
+                        type="checkbox" 
+                        checked={formData.enable_mfa === 'true'}
+                        onChange={(e) => handleCheckboxChange('enable_mfa', e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary" 
+                      />
                       <span className="ml-2 text-sm text-gray-700">Enable MFA</span>
                     </label>
                   </div>
@@ -245,11 +334,21 @@ export default function SettingsPage() {
                   </label>
                   <div className="mt-2 space-y-2">
                     <label className="flex items-center">
-                      <input type="checkbox" defaultChecked className="rounded border-gray-300 text-primary focus:ring-primary" />
+                      <input 
+                        type="checkbox" 
+                        checked={formData.enable_rate_limiting === 'true'}
+                        onChange={(e) => handleCheckboxChange('enable_rate_limiting', e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary" 
+                      />
                       <span className="ml-2 text-sm text-gray-700">Enable rate limiting</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" defaultChecked className="rounded border-gray-300 text-primary focus:ring-primary" />
+                      <input 
+                        type="checkbox" 
+                        checked={formData.require_https === 'true'}
+                        onChange={(e) => handleCheckboxChange('require_https', e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary" 
+                      />
                       <span className="ml-2 text-sm text-gray-700">Require HTTPS</span>
                     </label>
                   </div>
@@ -266,7 +365,11 @@ export default function SettingsPage() {
                   <label className="block text-sm font-medium text-gray-700">
                     Database Type
                   </label>
-                  <select className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
+                  <select 
+                    value={formData.database_type || ''}
+                    onChange={(e) => handleInputChange('database_type', e.target.value)}
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                  >
                     <option>PostgreSQL with TimescaleDB</option>
                     <option>SQLite (Development)</option>
                   </select>
@@ -278,7 +381,9 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    defaultValue="postgresql://patchmonitor:***@localhost:5432/patchmonitor"
+                    value={formData.database_connection_string || ''}
+                    onChange={(e) => handleInputChange('database_connection_string', e.target.value)}
+                    placeholder="postgresql://patchmonitor:***@localhost:5432/patchmonitor"
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
                   />
                 </div>
@@ -287,11 +392,15 @@ export default function SettingsPage() {
                   <label className="block text-sm font-medium text-gray-700">
                     Backup Schedule
                   </label>
-                  <select className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                    <option>Daily at 2:00 AM</option>
-                    <option>Weekly on Sunday</option>
-                    <option>Monthly on 1st</option>
-                    <option>Disabled</option>
+                  <select 
+                    value={formData.backup_schedule || ''}
+                    onChange={(e) => handleInputChange('backup_schedule', e.target.value)}
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                  >
+                    <option value="daily">Daily at 2:00 AM</option>
+                    <option value="weekly">Weekly on Sunday</option>
+                    <option value="monthly">Monthly on 1st</option>
+                    <option value="disabled">Disabled</option>
                   </select>
                 </div>
               </div>

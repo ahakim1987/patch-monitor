@@ -9,6 +9,7 @@ import structlog
 from app.config import settings
 from app.database import get_db, engine, Base
 from app.routers import hosts, users, auth, agents, reports, alerts
+from app.routers import settings as settings_router
 from app.models import User
 from app.auth import get_password_hash
 
@@ -67,6 +68,7 @@ app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
+app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
 
 
 @app.on_event("startup")

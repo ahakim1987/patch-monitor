@@ -149,20 +149,30 @@ export default function DashboardPage() {
         <div className="card">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Patch Lag Distribution</h3>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[
-                { name: '0-7 days', value: 150, color: COLORS.green },
-                { name: '8-30 days', value: 45, color: COLORS.yellow },
-                { name: '31-60 days', value: 20, color: COLORS.orange },
-                { name: '60+ days', value: 5, color: COLORS.red },
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3B82F6" />
-              </BarChart>
-            </ResponsiveContainer>
+            {hosts && hosts.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[
+                  { name: '0-7 days', value: 0, color: COLORS.green },
+                  { name: '8-30 days', value: 0, color: COLORS.yellow },
+                  { name: '31-60 days', value: 0, color: COLORS.orange },
+                  { name: '60+ days', value: 0, color: COLORS.red },
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="text-center">
+                  <Clock className="mx-auto h-12 w-12 mb-2" />
+                  <p className="text-sm">No data available</p>
+                  <p className="text-xs">Add hosts to see patch lag distribution</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

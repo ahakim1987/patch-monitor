@@ -194,3 +194,14 @@ class HostTag(Base):
     # Relationships
     host = relationship("Host", back_populates="tags")
     tag = relationship("Tag")
+
+
+class Settings(Base):
+    """Application settings stored as key-value pairs."""
+    __tablename__ = "settings"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    key = Column(String(100), unique=True, nullable=False)
+    value = Column(String(500))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))

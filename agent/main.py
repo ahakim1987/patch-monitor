@@ -124,12 +124,18 @@ class PatchMonitorAgent:
         """Get updates for APT-based systems."""
         updates = []
         
+        # Try to update package list (optional - may fail without sudo)
         try:
-            # Update package list
-            subprocess.run(['apt', 'update'], 
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=300)
-            
-            # Get upgradable packages
+            subprocess.run(['sudo', 'apt', 'update'], 
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+            logger.info("APT package list refreshed")
+        except:
+            # Not critical - we can still read from cache
+            logger.debug("Could not refresh APT cache (run 'apt update' manually or grant sudo)")
+            pass
+        
+        # Get upgradable packages from cache
+        try:
             result = subprocess.run(
                 ['apt', 'list', '--upgradable'],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
@@ -153,10 +159,8 @@ class PatchMonitorAgent:
                             'is_security': is_security,
                             'update_type': 'critical' if is_security else 'low'
                         })
-        except subprocess.TimeoutExpired:
-            logger.error("APT update timed out")
         except subprocess.CalledProcessError as e:
-            logger.error(f"APT command failed: {e}")
+            logger.error(f"Failed to list APT updates: {e}")
         
         return updates
     

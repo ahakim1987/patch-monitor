@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class PatchMonitorAgent:
     """Main agent class for collecting and sending patch data."""
     
-    def __init__(self, server_url: str, agent_token: str, collection_interval: int = 3600):
+    def __init__(self, server_url: str, agent_token: str, collection_interval: int = 21600):
         """Initialize the agent."""
         self.server_url = server_url.rstrip('/')
         self.agent_token = agent_token
@@ -134,6 +134,9 @@ class PatchMonitorAgent:
             logger.debug("Could not refresh APT cache (run 'apt update' manually or grant sudo)")
             pass
         
+        # Get security updates list ONCE (much faster than checking each package)
+        security_packages = self._get_apt_security_packages()
+        
         # Get upgradable packages from cache
         try:
             result = subprocess.run(
@@ -149,8 +152,8 @@ class PatchMonitorAgent:
                         current_version = parts[1]
                         available_version = parts[2] if len(parts) > 2 else None
                         
-                        # Check if it's a security update
-                        is_security = self._is_security_update_apt(package_name)
+                        # Check if package is in the security list (fast lookup)
+                        is_security = package_name in security_packages
                         
                         updates.append({
                             'package_name': package_name,
@@ -164,11 +167,38 @@ class PatchMonitorAgent:
         
         return updates
     
+    def _get_apt_security_packages(self) -> set:
+        """Get list of packages with security updates (APT). Fast batch operation."""
+        security_packages = set()
+        try:
+            # Use unattended-upgrades method to find security packages
+            result = subprocess.run(
+                ['apt-get', '--just-print', 'upgrade'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
+            )
+            
+            # Parse output for packages from security repos
+            for line in result.stdout.split('\n'):
+                if 'Inst' in line and ('security' in line.lower() or 'updates' in line.lower()):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        package_name = parts[1]
+                        security_packages.add(package_name)
+        except:
+            # If this fails, fall back to empty set (all packages marked as non-security)
+            logger.debug("Could not determine security packages, marking all as non-security")
+            pass
+        
+        return security_packages
+    
     def _get_dnf_yum_updates(self, package_manager: str) -> List[Dict[str, Any]]:
         """Get updates for DNF/YUM-based systems."""
         updates = []
         
         try:
+            # Get security packages list ONCE (much faster)
+            security_packages = self._get_dnf_security_packages(package_manager)
+            
             # Get available updates
             # Note: dnf/yum returns exit code 100 if updates are available, 0 if none
             # Use --assumeyes to avoid GPG key prompts
@@ -201,8 +231,8 @@ class PatchMonitorAgent:
                     available_version = parts[1]
                     repository = parts[2]
                     
-                    # Check if it's a security update
-                    is_security = self._is_security_update_dnf_yum(package_name)
+                    # Check if package is in security list (fast lookup)
+                    is_security = package_name in security_packages
                     
                     updates.append({
                         'package_name': package_name,
@@ -215,6 +245,33 @@ class PatchMonitorAgent:
             logger.error(f"{package_manager} command failed: {e}")
         
         return updates
+    
+    def _get_dnf_security_packages(self, package_manager: str) -> set:
+        """Get list of packages with security updates (DNF/YUM). Fast batch operation."""
+        security_packages = set()
+        try:
+            # Use updateinfo to get security advisories
+            result = subprocess.run(
+                [package_manager, 'updateinfo', 'list', 'security', '--quiet'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
+            )
+            
+            # Parse output: each line contains package info
+            for line in result.stdout.split('\n'):
+                line = line.strip()
+                if line and not line.startswith('Last metadata'):
+                    parts = line.split()
+                    # Format: RHSA-2024:1234 Important/Sec. package-name.arch
+                    if len(parts) >= 3:
+                        # Last part is usually the package name
+                        package_name = parts[-1]
+                        security_packages.add(package_name)
+        except:
+            # If this fails, fall back to empty set
+            logger.debug("Could not determine security packages for DNF/YUM")
+            pass
+        
+        return security_packages
     
     def _get_zypper_updates(self) -> List[Dict[str, Any]]:
         """Get updates for Zypper-based systems."""
@@ -278,27 +335,6 @@ class PatchMonitorAgent:
         
         return updates
     
-    def _is_security_update_apt(self, package_name: str) -> bool:
-        """Check if an APT package is a security update."""
-        try:
-            result = subprocess.run(
-                ['apt', 'show', package_name],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
-            )
-            return 'security' in result.stdout.lower()
-        except:
-            return False
-    
-    def _is_security_update_dnf_yum(self, package_name: str) -> bool:
-        """Check if a DNF/YUM package is a security update."""
-        try:
-            result = subprocess.run(
-                ['rpm', '-q', '--changelog', package_name],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
-            )
-            return 'security' in result.stdout.lower() or 'cve' in result.stdout.lower()
-        except:
-            return False
     
     def get_last_patch_time(self) -> Optional[datetime]:
         """Get the last time packages were updated."""

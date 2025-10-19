@@ -219,14 +219,20 @@ class PatchMonitorAgent:
                     continue
                 if line.startswith('Last metadata'):
                     continue
+                if line.startswith('Updating and loading'):
+                    continue
+                if line.startswith('Repositories loaded'):
+                    continue
                 if line.startswith('Importing GPG'):
                     continue
                 if 'Is this ok' in line:
                     continue
+                if ':' in line and not '.' in line:  # Skip header lines like "Repositories:"
+                    continue
                     
                 parts = line.split()
                 # Valid package lines have exactly 3 parts: package.arch, version, repo
-                if len(parts) == 3:
+                if len(parts) == 3 and '.' in parts[0]:  # Package name must have .arch
                     package_name = parts[0]
                     available_version = parts[1]
                     repository = parts[2]

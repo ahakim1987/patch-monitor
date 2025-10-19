@@ -121,7 +121,12 @@ install_agent() {
     # Create virtual environment
     python3 -m venv "$INSTALL_DIR/venv"
     
+    # Upgrade pip first for compatibility with older systems
+    print_status "Upgrading pip"
+    "$INSTALL_DIR/venv/bin/pip" install --upgrade pip setuptools wheel
+    
     # Install Python dependencies
+    print_status "Installing Python dependencies"
     "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
     
     # Create configuration file

@@ -136,9 +136,14 @@ export default function HostsPage() {
                   <h4 className="text-sm font-semibold text-gray-900 mb-2">To add a host:</h4>
                   <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
                     <li>SSH into your Linux host</li>
-                    <li>Download and run the agent installer:
+                    <li>Download the agent installer:
                       <pre className="mt-1 bg-gray-800 text-gray-100 p-2 rounded text-xs overflow-x-auto">
-sudo ./agent/install.sh --server-url http://your-server:8001 --token YOUR_TOKEN</pre>
+wget http://{window.location.hostname}:8001/api/agents/download/install.sh
+chmod +x install.sh</pre>
+                    </li>
+                    <li>Run the installer:
+                      <pre className="mt-1 bg-gray-800 text-gray-100 p-2 rounded text-xs overflow-x-auto">
+sudo ./install.sh --server-url http://{window.location.hostname}:8001 --token YOUR_AGENT_TOKEN</pre>
                     </li>
                     <li>The host will appear here automatically within minutes</li>
                   </ol>

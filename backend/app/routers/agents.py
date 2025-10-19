@@ -1,7 +1,9 @@
 """Agent data collection router."""
 
 from datetime import datetime, timedelta
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Host, HostSnapshot, PendingUpdate, HostStatus
@@ -9,6 +11,9 @@ from app.schemas import AgentData, AgentResponse
 from app.config import settings
 
 router = APIRouter()
+
+# Path to agent files
+AGENT_DIR = Path(__file__).parent.parent.parent.parent / "agent"
 
 
 def verify_agent_token(token: str) -> bool:
@@ -108,3 +113,42 @@ async def get_agent_config(
         "server_url": f"http://{settings.host}:{settings.port}",
         "api_endpoint": "/api/agents/data"
     }
+
+
+@router.get("/download/install.sh")
+async def download_install_script():
+    """Download agent installation script."""
+    file_path = AGENT_DIR / "install.sh"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Installation script not found")
+    return FileResponse(
+        path=str(file_path),
+        filename="install.sh",
+        media_type="application/x-sh"
+    )
+
+
+@router.get("/download/main.py")
+async def download_agent_main():
+    """Download agent main script."""
+    file_path = AGENT_DIR / "main.py"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Agent script not found")
+    return FileResponse(
+        path=str(file_path),
+        filename="main.py",
+        media_type="text/x-python"
+    )
+
+
+@router.get("/download/requirements.txt")
+async def download_requirements():
+    """Download agent requirements file."""
+    file_path = AGENT_DIR / "requirements.txt"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Requirements file not found")
+    return FileResponse(
+        path=str(file_path),
+        filename="requirements.txt",
+        media_type="text/plain"
+    )

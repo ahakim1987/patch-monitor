@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -16,8 +16,23 @@ router = APIRouter()
 AGENT_DIR = Path("/agent")
 
 
-def verify_agent_token(token: str, db: Session = Depends(get_db)) -> bool:
-    """Verify agent authentication token."""
+def verify_agent_token(authorization: str = Header(None), db: Session = Depends(get_db)) -> bool:
+    """Verify agent authentication token from Authorization header."""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header"
+        )
+    
+    # Extract token from "Bearer <token>" format
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Authorization header format. Expected: Bearer <token>"
+        )
+    
+    token = authorization.replace("Bearer ", "").strip()
+    
     # Check database token first
     agent_token_setting = db.query(Settings).filter(Settings.key == "agent_token").first()
     
@@ -26,14 +41,20 @@ def verify_agent_token(token: str, db: Session = Depends(get_db)) -> bool:
             return True
     
     # Fall back to environment variable (for backward compatibility)
-    return token == settings.agent_secret_key
+    if token == settings.agent_secret_key:
+        return True
+    
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid agent token"
+    )
 
 
 @router.post("/data", response_model=AgentResponse)
 async def submit_agent_data(
     data: AgentData,
-    token: str = Depends(verify_agent_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_agent_token)
 ):
     """Submit data from agent."""
     try:
@@ -113,7 +134,7 @@ async def submit_agent_data(
 
 @router.get("/config")
 async def get_agent_config(
-    token: str = Depends(verify_agent_token)
+    _: bool = Depends(verify_agent_token)
 ):
     """Get agent configuration."""
     return {

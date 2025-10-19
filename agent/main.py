@@ -92,7 +92,7 @@ class PatchMonitorAgent:
             for cmd in commands:
                 try:
                     subprocess.run([cmd, '--version'], 
-                                 capture_output=True, check=True)
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
                     return pm
                 except (subprocess.CalledProcessError, FileNotFoundError):
                     continue
@@ -127,12 +127,12 @@ class PatchMonitorAgent:
         try:
             # Update package list
             subprocess.run(['apt', 'update'], 
-                         capture_output=True, check=True, timeout=300)
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=300)
             
             # Get upgradable packages
             result = subprocess.run(
                 ['apt', 'list', '--upgradable'],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             
             for line in result.stdout.split('\n'):
@@ -169,7 +169,7 @@ class PatchMonitorAgent:
             # Note: dnf/yum returns exit code 100 if updates are available, 0 if none
             result = subprocess.run(
                 [package_manager, 'check-update', '--quiet'],
-                capture_output=True, text=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
             )
             
             # Exit code 0 = no updates, 1 or 100 = updates available, anything else = error
@@ -207,7 +207,7 @@ class PatchMonitorAgent:
             # Get available updates
             result = subprocess.run(
                 ['zypper', 'list-updates'],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             
             for line in result.stdout.split('\n'):
@@ -238,7 +238,7 @@ class PatchMonitorAgent:
             # Get available updates
             result = subprocess.run(
                 ['pacman', '-Qu'],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             
             for line in result.stdout.split('\n'):
@@ -266,7 +266,7 @@ class PatchMonitorAgent:
         try:
             result = subprocess.run(
                 ['apt', 'show', package_name],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             return 'security' in result.stdout.lower()
         except:
@@ -277,7 +277,7 @@ class PatchMonitorAgent:
         try:
             result = subprocess.run(
                 ['rpm', '-q', '--changelog', package_name],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             return 'security' in result.stdout.lower() or 'cve' in result.stdout.lower()
         except:
@@ -306,7 +306,7 @@ class PatchMonitorAgent:
         try:
             result = subprocess.run(
                 ['stat', '-c', '%Y', '/var/lib/apt/lists/'],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             timestamp = int(result.stdout.strip())
             return datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -318,7 +318,7 @@ class PatchMonitorAgent:
         try:
             result = subprocess.run(
                 ['stat', '-c', '%Y', '/var/lib/dnf/history/'],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             timestamp = int(result.stdout.strip())
             return datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -330,7 +330,7 @@ class PatchMonitorAgent:
         try:
             result = subprocess.run(
                 ['stat', '-c', '%Y', '/var/log/zypp/history'],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             timestamp = int(result.stdout.strip())
             return datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -342,7 +342,7 @@ class PatchMonitorAgent:
         try:
             result = subprocess.run(
                 ['stat', '-c', '%Y', '/var/log/pacman.log'],
-                capture_output=True, text=True, check=True
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
             )
             timestamp = int(result.stdout.strip())
             return datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -367,14 +367,14 @@ class PatchMonitorAgent:
             if package_manager == 'apt':
                 result = subprocess.run(
                     ['uname', '-r'],
-                    capture_output=True, text=True, check=True
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
                 )
                 current_kernel = result.stdout.strip()
                 
                 # Check if there's a newer kernel installed
                 result = subprocess.run(
                     ['dpkg', '-l', 'linux-image-*'],
-                    capture_output=True, text=True, check=True
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True
                 )
                 
                 for line in result.stdout.split('\n'):

@@ -96,8 +96,10 @@ async def update_user(
     update_data = user_update.dict(exclude_unset=True)
     for field, value in update_data.items():
         if field == "password" and value:
-            value = get_password_hash(value)
-        setattr(user, field, value)
+            # Hash the password and set it to password_hash field
+            user.password_hash = get_password_hash(value)
+        else:
+            setattr(user, field, value)
     
     db.commit()
     db.refresh(user)

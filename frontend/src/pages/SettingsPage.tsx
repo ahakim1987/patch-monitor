@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
-import { settingsApi, Settings as SettingsType } from '../api/settings'
+import { settingsApi, Settings as SettingsType, AgentToken } from '../api/settings'
 import { usersApi, User, UserCreate, UserUpdate } from '../api/users'
 import { 
   Settings, 
@@ -17,7 +17,10 @@ import {
   Plus,
   Edit2,
   Trash2,
-  X
+  X,
+  Copy,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -33,6 +36,10 @@ export default function SettingsPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [userFormData, setUserFormData] = useState<Partial<UserCreate & UserUpdate>>({})
   const [deleteConfirmUserId, setDeleteConfirmUserId] = useState<string | null>(null)
+  
+  // Agent token state
+  const [showAgentToken, setShowAgentToken] = useState(false)
+  const [tokenCopied, setTokenCopied] = useState(false)
 
   const tabs = [
     { id: 'general', name: 'General', icon: Settings },
@@ -74,6 +81,9 @@ export default function SettingsPage() {
       }
     }
   )
+
+  // Agent token query
+  const { data: agentToken } = useQuery<AgentToken>('agent-token', settingsApi.getAgentToken)
 
   // User management queries and mutations
   const { data: users } = useQuery('users', usersApi.getUsers)
@@ -179,6 +189,14 @@ export default function SettingsPage() {
     deleteUserMutation.mutate(userId)
   }
 
+  const handleCopyToken = () => {
+    if (agentToken?.agent_token) {
+      navigator.clipboard.writeText(agentToken.agent_token)
+      setTokenCopied(true)
+      setTimeout(() => setTokenCopied(false), 2000)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -253,50 +271,115 @@ export default function SettingsPage() {
         {/* Content */}
         <div className="flex-1">
           {activeTab === 'general' && (
-            <div className="card">
-              <h3 className="text-lg font-medium text-gray-900 mb-6">General Settings</h3>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Application Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.application_name || ''}
-                    onChange={(e) => handleInputChange('application_name', e.target.value)}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Collection Interval (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.collection_interval || ''}
-                    onChange={(e) => handleInputChange('collection_interval', e.target.value)}
-                    min="15"
-                    max="1440"
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Data Retention (days)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.data_retention_days || ''}
-                    onChange={(e) => handleInputChange('data_retention_days', e.target.value)}
-                    min="7"
-                    max="365"
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
-                  />
+            <>
+              <div className="card">
+                <h3 className="text-lg font-medium text-gray-900 mb-6">General Settings</h3>
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Application Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.application_name || ''}
+                      onChange={(e) => handleInputChange('application_name', e.target.value)}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Collection Interval (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.collection_interval || ''}
+                      onChange={(e) => handleInputChange('collection_interval', e.target.value)}
+                      min="15"
+                      max="1440"
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Data Retention (days)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.data_retention_days || ''}
+                      onChange={(e) => handleInputChange('data_retention_days', e.target.value)}
+                      min="7"
+                      max="365"
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* Agent Token Card */}
+              <div className="card">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Agent Deployment</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Use this token to install agents on your Linux hosts. Keep it secure!
+                </p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Agent Authentication Token
+                    </label>
+                    <div className="flex space-x-2">
+                      <div className="relative flex-1">
+                        <input
+                          type={showAgentToken ? "text" : "password"}
+                          value={agentToken?.agent_token || 'Loading...'}
+                          readOnly
+                          className="block w-full pr-20 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm font-mono bg-gray-50"
+                        />
+                        <button
+                          onClick={() => setShowAgentToken(!showAgentToken)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                          {showAgentToken ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      <button
+                        onClick={handleCopyToken}
+                        className="btn btn-secondary"
+                        disabled={!agentToken}
+                      >
+                        {tokenCopied ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-2">Installation Command</h4>
+                    <p className="text-xs text-blue-700 mb-2">Run this on your Linux hosts:</p>
+                    <pre className="bg-blue-900 text-blue-100 p-3 rounded text-xs overflow-x-auto">
+{`wget http://${window.location.hostname}:8001/api/agents/download/install.sh
+chmod +x install.sh
+sudo ./install.sh --server-url http://${window.location.hostname}:8001 --token ${agentToken?.agent_token || 'YOUR_TOKEN'}`}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           {activeTab === 'users' && (

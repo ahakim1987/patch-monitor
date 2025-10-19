@@ -7,6 +7,7 @@ from app.models import Settings
 from app.schemas import SettingsResponse, SettingsUpdate
 from app.auth import require_role, get_current_user
 from app.models import User
+from app.config import settings as app_settings
 
 router = APIRouter()
 
@@ -79,4 +80,15 @@ async def update_settings(
     settings_dict = {setting.key: setting.value for setting in settings}
     
     return SettingsResponse(settings=settings_dict)
+
+
+@router.get("/agent-token")
+async def get_agent_token(
+    current_user: User = Depends(require_role("admin"))
+):
+    """Get the agent authentication token. Requires admin role."""
+    return {
+        "agent_token": app_settings.agent_secret_key,
+        "server_url": f"http://{app_settings.host}:{app_settings.port}"
+    }
 

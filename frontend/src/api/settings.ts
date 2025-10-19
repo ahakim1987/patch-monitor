@@ -27,6 +27,11 @@ export interface SettingsUpdate {
   settings: Partial<Settings>
 }
 
+export interface AgentToken {
+  agent_token: string
+  server_url: string
+}
+
 export const settingsApi = {
   getSettings: async (): Promise<SettingsResponse> => {
     const response = await apiClient.get('/api/settings')
@@ -35,6 +40,11 @@ export const settingsApi = {
 
   updateSettings: async (settings: Partial<Settings>): Promise<SettingsResponse> => {
     const response = await apiClient.put('/api/settings', { settings })
+    return response.data
+  },
+
+  getAgentToken: async (): Promise<AgentToken> => {
+    const response = await apiClient.get('/api/settings/agent-token')
     return response.data
   },
 }

@@ -16,14 +16,15 @@
 
 | # | Issue Description | Location/Page | Status | Notes |
 |---|-------------------|---------------|--------|-------|
-| 1 | Arbitrary data shown in Patch Lag Distribution chart with no hosts added | Dashboard / Patch Lag Distribution | 🔵 Needs Review | Shows "No data available" when no hosts exist |
-| 2 | Clicking on "Hosts" in left sidebar doesn't do anything - link is dead | Sidebar / Hosts | 🔵 Needs Review | Now redirects to Dashboard (where hosts are displayed) |
-| 3 | Reports page shows arbitrary data (245 hosts, compliance %, vulnerabilities) when no hosts added | Reports / All sections | 🔵 Needs Review | Now uses real API data from backend |
-| 4 | Settings changes not persisted - values reset when navigating away | Settings / General | 🔵 Needs Review | Settings now save to database via API |
-| 5 | Settings > Users page - no links work, can't update, no option to add users | Settings / Users | 🔵 Needs Review | Note: User management shows current state, full CRUD coming in future update |
-| 6 | Settings > Alerts page - non-functional | Settings / Alerts | 🔵 Needs Review | Alert settings now save and persist |
-| 7 | Settings > Security page - non-functional | Settings / Security | 🔵 Needs Review | Security settings now save and persist |
-| 8 | Settings > Database page - non-functional | Settings / Database | 🔵 Needs Review | Database settings now save and persist |
+| 1 | Arbitrary data shown in Patch Lag Distribution chart with no hosts added | Dashboard / Patch Lag Distribution | 🟢 Fixed | Shows "No data available" when no hosts exist |
+| 2 | Hosts sidebar link highlights both Dashboard and Hosts simultaneously | Sidebar / Hosts | 🔵 Needs Review | Created separate Hosts page with table view |
+| 3 | Reports page shows arbitrary data when no hosts added | Reports / All sections | 🟢 Fixed | Now uses real API data from backend |
+| 4 | Settings fields empty on first visit, data appears only after refresh | Settings / General | 🔵 Needs Review | Fixed with useEffect to sync settings data |
+| 5 | Settings > Users page - can't edit users or add new users | Settings / Users | 🔵 Needs Review | Full CRUD: add, edit, delete users with modal |
+| 6 | Settings > Alerts page - non-functional | Settings / Alerts | 🟢 Fixed | Alert settings now save and persist |
+| 7 | Settings > Security page - non-functional | Settings / Security | 🟢 Fixed | Security settings now save and persist |
+| 8 | Settings > Database page - non-functional | Settings / Database | 🟢 Fixed | Database settings now save and persist |
+| 9 | Refreshing any Settings sub-page redirects to General tab | Settings / All tabs | 🔵 Needs Review | Tab persists via URL query param ?tab=... |
 
 ---
 

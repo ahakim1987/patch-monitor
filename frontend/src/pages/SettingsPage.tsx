@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
+import { useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { settingsApi, Settings as SettingsType } from '../api/settings'
+import { usersApi, User, UserCreate, UserUpdate } from '../api/users'
 import { 
   Settings, 
   Users, 
@@ -11,15 +13,26 @@ import {
   Save,
   RefreshCw,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Edit2,
+  Trash2,
+  X
 } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState('general')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'general')
   const [formData, setFormData] = useState<Partial<SettingsType>>({})
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  
+  // User management state
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [userFormData, setUserFormData] = useState<Partial<UserCreate & UserUpdate>>({})
+  const [deleteConfirmUserId, setDeleteConfirmUserId] = useState<string | null>(null)
 
   const tabs = [
     { id: 'general', name: 'General', icon: Settings },
@@ -32,13 +45,15 @@ export default function SettingsPage() {
   // Load settings from API
   const { data: settingsData, isLoading } = useQuery(
     'settings',
-    settingsApi.getSettings,
-    {
-      onSuccess: (data) => {
-        setFormData(data.settings)
-      }
-    }
+    settingsApi.getSettings
   )
+
+  // Update formData when settings are loaded
+  useEffect(() => {
+    if (settingsData?.settings) {
+      setFormData(settingsData.settings)
+    }
+  }, [settingsData])
 
   // Mutation for saving settings
   const saveMutation = useMutation(
@@ -60,6 +75,64 @@ export default function SettingsPage() {
     }
   )
 
+  // User management queries and mutations
+  const { data: users } = useQuery('users', usersApi.getUsers)
+
+  const createUserMutation = useMutation(usersApi.createUser, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('users')
+      setShowUserModal(false)
+      setUserFormData({})
+      setSaveMessage({ type: 'success', text: 'User created successfully!' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    },
+    onError: (error: any) => {
+      setSaveMessage({ 
+        type: 'error', 
+        text: error.response?.data?.detail || 'Failed to create user.' 
+      })
+      setTimeout(() => setSaveMessage(null), 5000)
+    }
+  })
+
+  const updateUserMutation = useMutation(
+    ({ userId, data }: { userId: string; data: UserUpdate }) =>
+      usersApi.updateUser(userId, data),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('users')
+        setShowUserModal(false)
+        setEditingUser(null)
+        setUserFormData({})
+        setSaveMessage({ type: 'success', text: 'User updated successfully!' })
+        setTimeout(() => setSaveMessage(null), 3000)
+      },
+      onError: (error: any) => {
+        setSaveMessage({ 
+          type: 'error', 
+          text: error.response?.data?.detail || 'Failed to update user.' 
+        })
+        setTimeout(() => setSaveMessage(null), 5000)
+      }
+    }
+  )
+
+  const deleteUserMutation = useMutation(usersApi.deleteUser, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('users')
+      setDeleteConfirmUserId(null)
+      setSaveMessage({ type: 'success', text: 'User deleted successfully!' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    },
+    onError: (error: any) => {
+      setSaveMessage({ 
+        type: 'error', 
+        text: error.response?.data?.detail || 'Failed to delete user.' 
+      })
+      setTimeout(() => setSaveMessage(null), 5000)
+    }
+  })
+
   const handleSave = async () => {
     saveMutation.mutate(formData)
   }
@@ -70,6 +143,40 @@ export default function SettingsPage() {
 
   const handleCheckboxChange = (key: string, checked: boolean) => {
     setFormData(prev => ({ ...prev, [key]: checked ? 'true' : 'false' }))
+  }
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId)
+    setSearchParams({ tab: tabId })
+  }
+
+  const handleAddUser = () => {
+    setEditingUser(null)
+    setUserFormData({ role: 'viewer' })
+    setShowUserModal(true)
+  }
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user)
+    setUserFormData({
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    })
+    setShowUserModal(true)
+  }
+
+  const handleUserSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (editingUser) {
+      updateUserMutation.mutate({ userId: editingUser.id, data: userFormData })
+    } else {
+      createUserMutation.mutate(userFormData as UserCreate)
+    }
+  }
+
+  const handleDeleteUser = (userId: string) => {
+    deleteUserMutation.mutate(userId)
   }
 
   if (isLoading) {
@@ -128,7 +235,7 @@ export default function SettingsPage() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
                     activeTab === tab.id
                       ? 'bg-primary text-white'
@@ -194,36 +301,103 @@ export default function SettingsPage() {
 
           {activeTab === 'users' && (
             <div className="card">
-              <h3 className="text-lg font-medium text-gray-900 mb-6">User Management</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">Current User</h4>
-                    <p className="text-sm text-gray-500">{user?.username} ({user?.role})</p>
-                  </div>
-                  <button className="btn btn-secondary">Edit Profile</button>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-4">All Users</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">admin</span>
-                        <span className="ml-2 text-xs text-gray-500">admin@patchmonitor.local</span>
-                      </div>
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">admin</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">operator1</span>
-                        <span className="ml-2 text-xs text-gray-500">operator1@company.com</span>
-                      </div>
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">operator</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-medium text-gray-900">User Management</h3>
+                <button 
+                  onClick={handleAddUser}
+                  className="btn btn-primary"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add User
+                </button>
               </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Role
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Last Login
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {users?.map((userItem) => (
+                      <tr key={userItem.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {userItem.username}
+                              {userItem.id === user?.id && (
+                                <span className="ml-2 text-xs text-gray-500">(You)</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">{userItem.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            userItem.role === 'admin' ? 'bg-blue-100 text-blue-800' :
+                            userItem.role === 'operator' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {userItem.role}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            userItem.is_active 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {userItem.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {userItem.last_login 
+                            ? new Date(userItem.last_login).toLocaleDateString()
+                            : 'Never'
+                          }
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => handleEditUser(userItem)}
+                            className="text-primary hover:text-primary-dark"
+                          >
+                            <Edit2 className="h-4 w-4 inline" />
+                          </button>
+                          {userItem.id !== user?.id && (
+                            <button
+                              onClick={() => setDeleteConfirmUserId(userItem.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4 inline" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {users && users.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No users found. Add your first user to get started.
+                </div>
+              )}
             </div>
           )}
 
@@ -408,6 +582,151 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* User Add/Edit Modal */}
+      {showUserModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                {editingUser ? 'Edit User' : 'Add New User'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowUserModal(false)
+                  setEditingUser(null)
+                  setUserFormData({})
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUserSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={userFormData.username || ''}
+                  onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={userFormData.email || ''}
+                  onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password {editingUser && '(leave blank to keep current)'}
+                </label>
+                <input
+                  type="password"
+                  required={!editingUser}
+                  minLength={8}
+                  value={userFormData.password || ''}
+                  onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Role
+                </label>
+                <select
+                  required
+                  value={userFormData.role || 'viewer'}
+                  onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value as any })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="operator">Operator</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserModal(false)
+                    setEditingUser(null)
+                    setUserFormData({})
+                  }}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createUserMutation.isLoading || updateUserMutation.isLoading}
+                  className="btn btn-primary"
+                >
+                  {createUserMutation.isLoading || updateUserMutation.isLoading ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    editingUser ? 'Update User' : 'Create User'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmUserId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Confirm Delete
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this user? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteConfirmUserId(null)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteUser(deleteConfirmUserId)}
+                disabled={deleteUserMutation.isLoading}
+                className="btn bg-red-600 text-white hover:bg-red-700"
+              >
+                {deleteUserMutation.isLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete User'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

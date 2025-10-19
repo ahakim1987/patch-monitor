@@ -12,8 +12,8 @@ from app.config import settings
 
 router = APIRouter()
 
-# Path to agent files
-AGENT_DIR = Path(__file__).parent.parent.parent.parent / "agent"
+# Path to agent files (mounted at /agent in Docker container)
+AGENT_DIR = Path("/agent")
 
 
 def verify_agent_token(token: str) -> bool:

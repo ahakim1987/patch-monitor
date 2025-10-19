@@ -171,8 +171,9 @@ class PatchMonitorAgent:
         try:
             # Get available updates
             # Note: dnf/yum returns exit code 100 if updates are available, 0 if none
+            # Use --assumeyes to avoid GPG key prompts
             result = subprocess.run(
-                [package_manager, 'check-update', '--quiet'],
+                [package_manager, 'check-update', '--quiet', '--assumeyes'],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
             )
             
@@ -180,24 +181,36 @@ class PatchMonitorAgent:
             if result.returncode not in [0, 1, 100]:
                 logger.error(f"{package_manager} check-update returned unexpected code {result.returncode}")
             
+            # Parse package list - filter out metadata and prompts
             for line in result.stdout.split('\n'):
-                if line.strip() and not line.startswith('Last metadata'):
-                    parts = line.split()
-                    if len(parts) >= 3:
-                        package_name = parts[0]
-                        current_version = parts[1]
-                        available_version = parts[2]
-                        
-                        # Check if it's a security update
-                        is_security = self._is_security_update_dnf_yum(package_name)
-                        
-                        updates.append({
-                            'package_name': package_name,
-                            'current_version': current_version,
-                            'available_version': available_version,
-                            'is_security': is_security,
-                            'update_type': 'critical' if is_security else 'low'
-                        })
+                line = line.strip()
+                # Skip empty lines, metadata, and lines without proper format
+                if not line:
+                    continue
+                if line.startswith('Last metadata'):
+                    continue
+                if line.startswith('Importing GPG'):
+                    continue
+                if 'Is this ok' in line:
+                    continue
+                    
+                parts = line.split()
+                # Valid package lines have exactly 3 parts: package.arch, version, repo
+                if len(parts) == 3:
+                    package_name = parts[0]
+                    available_version = parts[1]
+                    repository = parts[2]
+                    
+                    # Check if it's a security update
+                    is_security = self._is_security_update_dnf_yum(package_name)
+                    
+                    updates.append({
+                        'package_name': package_name,
+                        'current_version': 'unknown',  # DNF doesn't show current version
+                        'available_version': available_version,
+                        'is_security': is_security,
+                        'update_type': 'critical' if is_security else 'low'
+                    })
         except Exception as e:
             logger.error(f"{package_manager} command failed: {e}")
         

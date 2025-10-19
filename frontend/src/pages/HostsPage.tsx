@@ -5,8 +5,6 @@ import {
   Server, 
   RefreshCw,
   Search,
-  Filter,
-  Plus,
   ExternalLink
 } from 'lucide-react'
 import { hostsApi, HostSummary } from '../api/hosts'
@@ -69,21 +67,15 @@ export default function HostsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Hosts</h1>
-          <p className="text-gray-600">Manage and monitor all your Linux hosts</p>
+          <p className="text-gray-600">Monitor all your Linux hosts (auto-registered via agents)</p>
         </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={handleRefresh}
-            className="btn btn-secondary"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </button>
-          <button className="btn btn-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Host
-          </button>
-        </div>
+        <button
+          onClick={handleRefresh}
+          className="btn btn-secondary"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </button>
       </div>
 
       {/* Filters */}
@@ -128,21 +120,32 @@ export default function HostsPage() {
       {/* Hosts Table */}
       <div className="card overflow-hidden">
         {filteredHosts.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 px-4">
             <Server className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No hosts found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || statusFilter !== 'all' || osFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Get started by adding your first host to monitor'
-              }
-            </p>
-            {!searchTerm && statusFilter === 'all' && osFilter === 'all' && (
-              <div className="mt-6">
-                <button className="btn btn-primary">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Host
-                </button>
+            {searchTerm || statusFilter !== 'all' || osFilter !== 'all' ? (
+              <p className="mt-1 text-sm text-gray-500">
+                Try adjusting your filters
+              </p>
+            ) : (
+              <div className="mt-4 max-w-2xl mx-auto">
+                <p className="text-sm text-gray-600 mb-4">
+                  Hosts are automatically registered when you install the agent on them.
+                </p>
+                <div className="bg-gray-50 rounded-lg p-4 text-left">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">To add a host:</h4>
+                  <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+                    <li>SSH into your Linux host</li>
+                    <li>Download and run the agent installer:
+                      <pre className="mt-1 bg-gray-800 text-gray-100 p-2 rounded text-xs overflow-x-auto">
+sudo ./agent/install.sh --server-url http://your-server:8001 --token YOUR_TOKEN</pre>
+                    </li>
+                    <li>The host will appear here automatically within minutes</li>
+                  </ol>
+                  <p className="mt-3 text-xs text-gray-500">
+                    Supports: Ubuntu, Debian, RHEL, CentOS, Rocky Linux, AlmaLinux, Fedora
+                  </p>
+                </div>
               </div>
             )}
           </div>

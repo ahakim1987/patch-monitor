@@ -100,9 +100,23 @@ install_agent() {
     # Create installation directory
     mkdir -p "$INSTALL_DIR"
     
-    # Copy agent files
-    cp main.py "$INSTALL_DIR/"
-    cp requirements.txt "$INSTALL_DIR/"
+    # Download agent files from server
+    print_status "Downloading agent files from $SERVER_URL"
+    
+    # Extract base URL (remove any /api/... path)
+    BASE_URL="${SERVER_URL%/api*}"
+    
+    if ! curl -f -o "$INSTALL_DIR/main.py" "$BASE_URL/api/agents/download/main.py"; then
+        print_error "Failed to download main.py from $BASE_URL/api/agents/download/main.py"
+        exit 1
+    fi
+    
+    if ! curl -f -o "$INSTALL_DIR/requirements.txt" "$BASE_URL/api/agents/download/requirements.txt"; then
+        print_error "Failed to download requirements.txt from $BASE_URL/api/agents/download/requirements.txt"
+        exit 1
+    fi
+    
+    print_status "Agent files downloaded successfully"
     
     # Create virtual environment
     python3 -m venv "$INSTALL_DIR/venv"

@@ -63,6 +63,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://patchmonitor:password@postgres:5432/patchmonitor
       - REDIS_URL=redis://redis:6379/0
+      - AGENT_SECRET_KEY=${AGENT_SECRET_KEY:-your-agent-secret-key-here}
     ports:
       - "8001:8000"
     volumes:

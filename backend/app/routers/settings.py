@@ -1,5 +1,6 @@
 """Settings router."""
 
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -84,11 +85,54 @@ async def update_settings(
 
 @router.get("/agent-token")
 async def get_agent_token(
+    db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin"))
 ):
     """Get the agent authentication token. Requires admin role."""
+    # Try to get token from database first
+    agent_token_setting = db.query(Settings).filter(Settings.key == "agent_token").first()
+    
+    if agent_token_setting and agent_token_setting.value:
+        token = agent_token_setting.value
+    else:
+        # Fall back to environment variable
+        token = app_settings.agent_secret_key
+    
     return {
-        "agent_token": app_settings.agent_secret_key,
+        "agent_token": token,
+        "server_url": f"http://{app_settings.host}:{app_settings.port}",
+        "is_default": token == "your-agent-secret-key-here"
+    }
+
+
+@router.post("/agent-token/generate")
+async def generate_agent_token(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin"))
+):
+    """Generate a new agent token. Requires admin role."""
+    # Generate a secure random token (64 hex characters)
+    new_token = secrets.token_hex(32)
+    
+    # Store in database
+    agent_token_setting = db.query(Settings).filter(Settings.key == "agent_token").first()
+    
+    if agent_token_setting:
+        agent_token_setting.value = new_token
+        agent_token_setting.updated_by = current_user.id
+    else:
+        agent_token_setting = Settings(
+            key="agent_token",
+            value=new_token,
+            updated_by=current_user.id
+        )
+        db.add(agent_token_setting)
+    
+    db.commit()
+    
+    return {
+        "agent_token": new_token,
+        "message": "New agent token generated successfully",
         "server_url": f"http://{app_settings.host}:{app_settings.port}"
     }
 

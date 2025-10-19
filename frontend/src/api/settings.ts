@@ -30,6 +30,7 @@ export interface SettingsUpdate {
 export interface AgentToken {
   agent_token: string
   server_url: string
+  is_default?: boolean
 }
 
 export const settingsApi = {
@@ -45,6 +46,11 @@ export const settingsApi = {
 
   getAgentToken: async (): Promise<AgentToken> => {
     const response = await apiClient.get('/api/settings/agent-token')
+    return response.data
+  },
+
+  generateAgentToken: async (): Promise<AgentToken> => {
+    const response = await apiClient.post('/api/settings/agent-token/generate')
     return response.data
   },
 }

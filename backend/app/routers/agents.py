@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Host, HostSnapshot, PendingUpdate, HostStatus
+from app.models import Host, HostSnapshot, PendingUpdate, HostStatus, Settings
 from app.schemas import AgentData, AgentResponse
 from app.config import settings
 
@@ -16,8 +16,16 @@ router = APIRouter()
 AGENT_DIR = Path("/agent")
 
 
-def verify_agent_token(token: str) -> bool:
+def verify_agent_token(token: str, db: Session = Depends(get_db)) -> bool:
     """Verify agent authentication token."""
+    # Check database token first
+    agent_token_setting = db.query(Settings).filter(Settings.key == "agent_token").first()
+    
+    if agent_token_setting and agent_token_setting.value:
+        if token == agent_token_setting.value:
+            return True
+    
+    # Fall back to environment variable (for backward compatibility)
     return token == settings.agent_secret_key
 
 

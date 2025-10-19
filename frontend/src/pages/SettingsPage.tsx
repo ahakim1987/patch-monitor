@@ -83,7 +83,24 @@ export default function SettingsPage() {
   )
 
   // Agent token query
-  const { data: agentToken } = useQuery<AgentToken>('agent-token', settingsApi.getAgentToken)
+  const { data: agentToken, refetch: refetchAgentToken } = useQuery<AgentToken>('agent-token', settingsApi.getAgentToken)
+
+  // Generate agent token mutation
+  const generateTokenMutation = useMutation(settingsApi.generateAgentToken, {
+    onSuccess: (data) => {
+      queryClient.setQueryData('agent-token', data)
+      setSaveMessage({ type: 'success', text: 'New agent token generated successfully!' })
+      setTimeout(() => setSaveMessage(null), 3000)
+      setShowAgentToken(true) // Auto-reveal the new token
+    },
+    onError: (error: any) => {
+      setSaveMessage({ 
+        type: 'error', 
+        text: error.response?.data?.detail || 'Failed to generate token.' 
+      })
+      setTimeout(() => setSaveMessage(null), 5000)
+    }
+  })
 
   // User management queries and mutations
   const { data: users } = useQuery('users', usersApi.getUsers)
@@ -319,7 +336,35 @@ export default function SettingsPage() {
 
               {/* Agent Token Card */}
               <div className="card">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Agent Deployment</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Agent Deployment</h3>
+                  <button
+                    onClick={() => generateTokenMutation.mutate()}
+                    disabled={generateTokenMutation.isLoading}
+                    className="btn btn-primary"
+                  >
+                    {generateTokenMutation.isLoading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {agentToken?.is_default ? 'Generate Token' : 'Regenerate Token'}
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                {agentToken?.is_default && (
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ You're using the default placeholder token. Click "Generate Token" to create a secure token.
+                    </p>
+                  </div>
+                )}
+
                 <p className="text-sm text-gray-600 mb-4">
                   Use this token to install agents on your Linux hosts. Keep it secure!
                 </p>
@@ -351,7 +396,7 @@ export default function SettingsPage() {
                       <button
                         onClick={handleCopyToken}
                         className="btn btn-secondary"
-                        disabled={!agentToken}
+                        disabled={!agentToken || agentToken.is_default}
                       >
                         {tokenCopied ? (
                           <>

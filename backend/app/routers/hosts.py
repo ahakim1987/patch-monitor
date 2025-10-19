@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.models import Host, HostSnapshot, HostStatus
 from app.schemas import (
@@ -53,7 +53,13 @@ async def get_hosts(
         # Calculate days since last patch
         days_since_patch = None
         if latest_snapshot and latest_snapshot.last_patch_time:
-            days_since_patch = (datetime.utcnow() - latest_snapshot.last_patch_time).days
+            # Handle both timezone-aware and naive datetimes
+            now = datetime.now(timezone.utc)
+            last_patch = latest_snapshot.last_patch_time
+            if last_patch.tzinfo is None:
+                # If last_patch_time is naive, make it UTC-aware
+                last_patch = last_patch.replace(tzinfo=timezone.utc)
+            days_since_patch = (now - last_patch).days
         
         host_summary = HostSummary(
             id=host.id,
@@ -203,8 +209,9 @@ async def get_dashboard_metrics(
         hosts_by_status[status.value] = count
     
     # Get latest snapshots for all hosts
+    now = datetime.now(timezone.utc)
     latest_snapshots = db.query(HostSnapshot).join(Host).filter(
-        HostSnapshot.collected_at >= datetime.utcnow() - timedelta(days=7)
+        HostSnapshot.collected_at >= now - timedelta(days=7)
     ).all()
     
     # Calculate metrics
@@ -212,7 +219,7 @@ async def get_dashboard_metrics(
     hosts_requiring_reboot = sum(1 for s in latest_snapshots if s.needs_reboot)
     
     # Recently updated hosts (last 24 hours)
-    recent_cutoff = datetime.utcnow() - timedelta(hours=24)
+    recent_cutoff = now - timedelta(hours=24)
     recently_updated = sum(
         1 for s in latest_snapshots 
         if s.last_patch_time and s.last_patch_time >= recent_cutoff
@@ -225,8 +232,12 @@ async def get_dashboard_metrics(
     ]
     average_patch_lag = 0
     if patch_times:
-        now = datetime.utcnow()
-        lag_days = [(now - pt).days for pt in patch_times]
+        # Handle both timezone-aware and naive datetimes
+        lag_days = []
+        for pt in patch_times:
+            if pt.tzinfo is None:
+                pt = pt.replace(tzinfo=timezone.utc)
+            lag_days.append((now - pt).days)
         average_patch_lag = sum(lag_days) / len(lag_days)
     
     return DashboardMetrics(

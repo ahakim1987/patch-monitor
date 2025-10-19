@@ -166,10 +166,15 @@ class PatchMonitorAgent:
         
         try:
             # Get available updates
+            # Note: dnf/yum returns exit code 100 if updates are available, 0 if none
             result = subprocess.run(
                 [package_manager, 'check-update', '--quiet'],
-                capture_output=True, text=True, check=True
+                capture_output=True, text=True
             )
+            
+            # Exit code 0 = no updates, 1 or 100 = updates available, anything else = error
+            if result.returncode not in [0, 1, 100]:
+                logger.error(f"{package_manager} check-update returned unexpected code {result.returncode}")
             
             for line in result.stdout.split('\n'):
                 if line.strip() and not line.startswith('Last metadata'):
@@ -189,9 +194,8 @@ class PatchMonitorAgent:
                             'is_security': is_security,
                             'update_type': 'critical' if is_security else 'low'
                         })
-        except subprocess.CalledProcessError as e:
-            if e.returncode != 100:  # 100 means updates available
-                logger.error(f"{package_manager} command failed: {e}")
+        except Exception as e:
+            logger.error(f"{package_manager} command failed: {e}")
         
         return updates
     

@@ -1,30 +1,37 @@
 # Issues Tracker
 **Date Created:** October 18, 2025  
-**Status:** In Progress
+**Last Updated:** October 19, 2025  
+**Status:** Active
 
 ---
 
-## How to Use This Document
-1. Add your issues in the table below
-2. I'll work through them one by one
-3. After each fix, test it and update the "Status" column
-4. Add any notes in the "Notes" column if the fix needs adjustment
+## Current Open Issues
+
+| # | Issue Description | Location/Impact | Status | Notes |
+|---|-------------------|-----------------|--------|-------|
+| 1 | Agent patchmonitor user home directory permissions causing DNF failures | Agent installation on Fedora/RHEL systems | 🔴 Open | DNF requires write access to ~/.local/state, installer should create and set permissions automatically |
 
 ---
 
-## Issues List
+## Recently Resolved Issues (Archive)
 
-| # | Issue Description | Location/Page | Status | Notes |
-|---|-------------------|---------------|--------|-------|
-| 1 | Arbitrary data shown in Patch Lag Distribution chart with no hosts added | Dashboard / Patch Lag Distribution | 🟢 Fixed | Shows "No data available" when no hosts exist |
-| 2 | Hosts sidebar link highlights both Dashboard and Hosts simultaneously | Sidebar / Hosts | 🔵 Needs Review | Created separate Hosts page with table view |
-| 3 | Reports page shows arbitrary data when no hosts added | Reports / All sections | 🟢 Fixed | Now uses real API data from backend |
-| 4 | Settings fields empty on first visit, data appears only after refresh | Settings / General | 🔵 Needs Review | Fixed with useEffect to sync settings data |
-| 5 | Settings > Users page - can't edit users or add new users | Settings / Users | 🔵 Needs Review | Full CRUD: add, edit, delete users with modal |
-| 6 | Settings > Alerts page - non-functional | Settings / Alerts | 🟢 Fixed | Alert settings now save and persist |
-| 7 | Settings > Security page - non-functional | Settings / Security | 🟢 Fixed | Security settings now save and persist |
-| 8 | Settings > Database page - non-functional | Settings / Database | 🟢 Fixed | Database settings now save and persist |
-| 9 | Refreshing any Settings sub-page redirects to General tab | Settings / All tabs | 🔵 Needs Review | Tab persists via URL query param ?tab=... |
+### October 19, 2025
+- ✅ Agent token generation from UI (no more .env editing)
+- ✅ Dashboard timezone datetime bug (500 errors fixed)
+- ✅ Python 3.6+ compatibility for older systems
+- ✅ APT cache reading without sudo permissions
+- ✅ DNF parsing for multiple package formats (Rocky, Fedora)
+- ✅ GPG key prompt handling
+- ✅ Agent performance optimization (5-10 min → 10-30 sec)
+- ✅ Collection interval changed to 6 hours
+- ✅ Fast batch security detection (APT & DNF)
+
+### October 18, 2025
+- ✅ Settings persistence across tabs and refreshes
+- ✅ User management CRUD functionality
+- ✅ Reports page showing real data
+- ✅ Dashboard charts with proper empty states
+- ✅ Dedicated Hosts page with agent deployment instructions
 
 ---
 
@@ -33,23 +40,13 @@
 - 🟡 **In Progress** - Currently being worked on
 - 🟢 **Fixed** - Deployed and tested, working correctly
 - 🔵 **Needs Review** - Fixed but needs your confirmation
-- ⚪ **Won't Fix** - Not applicable or out of scope
 
 ---
 
-## Instructions for You
-1. Replace "[Add issue here]" with your actual issue descriptions
-2. Fill in the "Location/Page" column
-3. Add as many rows as needed (just copy the table row format)
-4. After I fix something, I'll change status to 🔵 **Needs Review**
-5. After you test, update to 🟢 **Fixed** or add notes if it needs more work
+## Adding New Issues
 
----
-
-## Quick Format for Adding More Issues
-
+Use this format:
 ```
-| # | Issue Description | Location/Page | Status | Notes |
-|---|-------------------|---------------|--------|-------|
+| # | Issue Description | Location/Impact | Status | Notes |
+|---|-------------------|-----------------|--------|-------|
 ```
-

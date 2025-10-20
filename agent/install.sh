@@ -91,6 +91,14 @@ create_user() {
     else
         print_status "User $USER already exists"
     fi
+    
+    # Ensure user has proper home directory permissions for package managers
+    if [ -d "/home/$USER" ]; then
+        print_status "Setting up home directory permissions for $USER"
+        mkdir -p "/home/$USER/.local/state"
+        chown -R "$USER:$USER" "/home/$USER"
+        chmod 755 "/home/$USER"
+    fi
 }
 
 # Function to install agent

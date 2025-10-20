@@ -69,6 +69,7 @@ async def get_hosts(
             os_name=host.os_name,
             os_version=host.os_version,
             status=host.status,
+            agent_version=host.agent_version,
             last_patch_time=latest_snapshot.last_patch_time if latest_snapshot else None,
             pending_updates_count=latest_snapshot.pending_updates_count if latest_snapshot else 0,
             pending_security_count=latest_snapshot.pending_security_count if latest_snapshot else 0,
@@ -78,6 +79,54 @@ async def get_hosts(
         result.append(host_summary)
     
     return result
+
+
+@router.get("/agent-versions")
+async def get_agent_versions(
+    db: Session = Depends(get_db),
+    _: str = Depends(require_role(["admin", "operator", "viewer"]))
+):
+    """Get agent version statistics."""
+    # Get all hosts with their agent versions
+    hosts = db.query(Host).filter(Host.agent_version.isnot(None)).all()
+    
+    version_stats = {}
+    total_hosts = len(hosts)
+    
+    for host in hosts:
+        version = host.agent_version
+        if version not in version_stats:
+            version_stats[version] = {
+                "version": version,
+                "count": 0,
+                "hosts": []
+            }
+        version_stats[version]["count"] += 1
+        version_stats[version]["hosts"].append({
+            "hostname": host.hostname,
+            "status": host.status
+        })
+    
+    # Find the latest version (assuming semantic versioning)
+    latest_version = None
+    if version_stats:
+        # Simple version comparison - assumes format like "1.0.0"
+        latest_version = max(version_stats.keys(), key=lambda v: tuple(map(int, v.split('.'))))
+    
+    # Check for updates needed
+    hosts_needing_update = []
+    if latest_version and len(version_stats) > 1:
+        for version, stats in version_stats.items():
+            if version != latest_version:
+                hosts_needing_update.extend(stats["hosts"])
+    
+    return {
+        "total_hosts": total_hosts,
+        "latest_version": latest_version,
+        "version_stats": list(version_stats.values()),
+        "hosts_needing_update": hosts_needing_update,
+        "update_available": len(hosts_needing_update) > 0
+    }
 
 
 @router.get("/{host_id}", response_model=HostDetailResponse)

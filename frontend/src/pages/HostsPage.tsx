@@ -166,6 +166,9 @@ sudo ./install.sh --server-url http://{window.location.hostname}:8001 --token YO
                     Operating System
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Agent Version
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -205,6 +208,15 @@ sudo ./install.sh --server-url http://{window.location.hostname}:8001 --token YO
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{host.os_name}</div>
                       <div className="text-xs text-gray-500">{host.os_version}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {host.agent_version ? (
+                          <span className="font-mono">{host.agent_version}</span>
+                        ) : (
+                          <span className="text-gray-400">Unknown</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[host.status]}`}>

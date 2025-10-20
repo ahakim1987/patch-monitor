@@ -8,6 +8,7 @@ export interface HostSummary {
   os_name: string
   os_version: string
   status: 'online' | 'offline' | 'error'
+  agent_version?: string
   last_patch_time?: string
   pending_updates_count: number
   pending_security_count: number
@@ -86,6 +87,24 @@ export interface DashboardMetrics {
   recently_updated_hosts: number
 }
 
+export interface AgentVersionStats {
+  total_hosts: number
+  latest_version: string | null
+  version_stats: Array<{
+    version: string
+    count: number
+    hosts: Array<{
+      hostname: string
+      status: string
+    }>
+  }>
+  hosts_needing_update: Array<{
+    hostname: string
+    status: string
+  }>
+  update_available: boolean
+}
+
 export const hostsApi = {
   getHosts: async (params?: {
     skip?: number
@@ -120,5 +139,10 @@ export const hostsApi = {
 
   deleteHost: async (hostId: string): Promise<void> => {
     await apiClient.delete(`/api/hosts/${hostId}`)
+  },
+
+  getAgentVersions: async (): Promise<AgentVersionStats> => {
+    const response = await apiClient.get('/api/hosts/agent-versions')
+    return response.data
   },
 }

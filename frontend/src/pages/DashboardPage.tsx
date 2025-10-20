@@ -7,9 +7,11 @@ import {
   Clock, 
   RefreshCw,
   Search,
-  Filter
+  Filter,
+  Download,
+  X
 } from 'lucide-react'
-import { hostsApi, HostSummary, DashboardMetrics } from '../api/hosts'
+import { hostsApi, HostSummary, DashboardMetrics, AgentVersionStats } from '../api/hosts'
 import HostCard from '../components/HostCard'
 import MetricsCard from '../components/MetricsCard'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
@@ -26,6 +28,7 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [osFilter, setOsFilter] = useState('all')
+  const [showUpdateBanner, setShowUpdateBanner] = useState(true)
 
   const { data: metrics, isLoading: metricsLoading } = useQuery<DashboardMetrics>(
     'dashboard-metrics',
@@ -41,6 +44,12 @@ export default function DashboardPage() {
       os_name: osFilter !== 'all' ? osFilter : undefined,
     }),
     { refetchInterval: 30000 } // Refresh every 30 seconds
+  )
+
+  const { data: agentVersions } = useQuery<AgentVersionStats>(
+    'agent-versions',
+    hostsApi.getAgentVersions,
+    { refetchInterval: 300000 } // Refresh every 5 minutes
   )
 
   const filteredHosts = hosts?.filter(host => {
@@ -86,6 +95,40 @@ export default function DashboardPage() {
           Refresh
         </button>
       </div>
+
+      {/* Agent Update Banner */}
+      {agentVersions?.update_available && showUpdateBanner && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start">
+              <Download className="h-5 w-5 text-amber-600 mt-0.5 mr-3" />
+              <div>
+                <h3 className="text-sm font-medium text-amber-800">
+                  Agent Updates Available
+                </h3>
+                <p className="text-sm text-amber-700 mt-1">
+                  {agentVersions.hosts_needing_update.length} host(s) have newer agent versions available.
+                  Latest version: <span className="font-mono font-medium">{agentVersions.latest_version}</span>
+                </p>
+                <div className="mt-2">
+                  <button
+                    onClick={() => window.location.href = '/hosts'}
+                    className="text-sm text-amber-800 hover:text-amber-900 underline"
+                  >
+                    View hosts page for update instructions →
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowUpdateBanner(false)}
+              className="text-amber-400 hover:text-amber-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Metrics Cards */}
       {metrics && (

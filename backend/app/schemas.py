@@ -59,6 +59,7 @@ class HostSummary(BaseSchema):
     os_name: str
     os_version: str
     status: HostStatus
+    agent_version: Optional[str] = None
     last_patch_time: Optional[datetime]
     pending_updates_count: int = 0
     pending_security_count: int = 0

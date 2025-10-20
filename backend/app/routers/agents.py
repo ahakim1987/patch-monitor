@@ -144,6 +144,18 @@ async def get_agent_config(
     }
 
 
+@router.get("/version")
+async def get_agent_version(
+    _: bool = Depends(verify_agent_token)
+):
+    """Get latest agent version information."""
+    return {
+        "latest_version": "1.0.0",  # This should be updated when releasing new versions
+        "current_version": "1.0.0",  # For compatibility
+        "update_available": False
+    }
+
+
 @router.get("/download/install.sh")
 async def download_install_script():
     """Download agent installation script."""

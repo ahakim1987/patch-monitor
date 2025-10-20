@@ -20,6 +20,9 @@ import requests
 import psutil
 import distro
 
+# Agent version - increment this when releasing new versions
+AGENT_VERSION = "1.0.0"
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -38,6 +41,7 @@ class PatchMonitorAgent:
         self.collection_interval = collection_interval
         self.api_url = f"{self.server_url}/api/agents/data"
         self.config_url = f"{self.server_url}/api/agents/config"
+        self.version_url = f"{self.server_url}/api/agents/version"
         
     def get_system_info(self) -> Dict[str, Any]:
         """Collect basic system information."""
@@ -72,7 +76,8 @@ class PatchMonitorAgent:
                 'os_version': os_version,
                 'architecture': architecture,
                 'kernel_version': kernel_version,
-                'last_boot_time': boot_time.isoformat()
+                'last_boot_time': boot_time.isoformat(),
+                'agent_version': AGENT_VERSION
             }
         except Exception as e:
             logger.error(f"Failed to get system info: {e}")
@@ -522,6 +527,36 @@ class PatchMonitorAgent:
             logger.error(f"Network error getting config: {e}")
             return None
     
+    def check_for_updates(self) -> None:
+        """Check if a newer agent version is available."""
+        try:
+            headers = {
+                'Authorization': f'Bearer {self.agent_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.get(
+                self.version_url,
+                headers=headers,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                version_info = response.json()
+                latest_version = version_info.get('latest_version')
+                
+                if latest_version and latest_version != AGENT_VERSION:
+                    logger.warning(f"New agent version available: {latest_version} (current: {AGENT_VERSION})")
+                    logger.info(f"Run 'sudo systemctl restart patchmonitor-agent' to update")
+                else:
+                    logger.debug(f"Agent is up to date: {AGENT_VERSION}")
+            else:
+                logger.debug(f"Could not check for updates: {response.status_code}")
+                
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"Network error checking for updates: {e}")
+            # Don't log as error since this is not critical
+    
     def run_once(self) -> bool:
         """Run data collection once."""
         try:
@@ -541,6 +576,9 @@ class PatchMonitorAgent:
                 config = self.get_config()
                 if config:
                     self.collection_interval = config.get('collection_interval_minutes', self.collection_interval) * 60
+                
+                # Check for agent updates (every 6 hours)
+                self.check_for_updates()
                 
                 # Collect and send data
                 success = self.run_once()

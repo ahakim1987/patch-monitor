@@ -422,6 +422,64 @@ chmod +x install.sh
 sudo ./install.sh --server-url http://${window.location.hostname}:8001 --token ${agentToken?.agent_token || 'YOUR_TOKEN'}`}
                     </pre>
                   </div>
+
+                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                    <h4 className="text-sm font-semibold text-green-900 mb-2">Agent Upgrade Commands</h4>
+                    <p className="text-xs text-green-700 mb-3">To update existing agents to the latest version:</p>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <h5 className="text-xs font-medium text-green-800 mb-1">Option 1: Automatic Update (Recommended)</h5>
+                        <p className="text-xs text-green-700 mb-2">The agent will automatically check for updates every 6 hours and log warnings when new versions are available.</p>
+                        <pre className="bg-green-900 text-green-100 p-2 rounded text-xs overflow-x-auto">
+{`# Check agent logs for update notifications
+journalctl -u patchmonitor-agent -n 50
+
+# If updates are available, restart the agent
+sudo systemctl restart patchmonitor-agent`}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <h5 className="text-xs font-medium text-green-800 mb-1">Option 2: Manual Update</h5>
+                        <p className="text-xs text-green-700 mb-2">Download and install the latest agent files manually:</p>
+                        <pre className="bg-green-900 text-green-100 p-2 rounded text-xs overflow-x-auto">
+{`# Stop the agent
+sudo systemctl stop patchmonitor-agent
+
+# Download latest agent files
+cd /opt/patchmonitor-agent
+sudo curl -o main.py http://${window.location.hostname}:8001/api/agents/download/main.py
+sudo curl -o requirements.txt http://${window.location.hostname}:8001/api/agents/download/requirements.txt
+
+# Update Python dependencies
+sudo -u patchmonitor /opt/patchmonitor-agent/venv/bin/pip install -r requirements.txt
+
+# Set proper ownership
+sudo chown -R patchmonitor:patchmonitor /opt/patchmonitor-agent
+
+# Start the agent
+sudo systemctl start patchmonitor-agent`}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <h5 className="text-xs font-medium text-green-800 mb-1">Option 3: Complete Reinstall</h5>
+                        <p className="text-xs text-green-700 mb-2">For a clean installation with the latest version:</p>
+                        <pre className="bg-green-900 text-green-100 p-2 rounded text-xs overflow-x-auto">
+{`# Stop and remove old agent
+sudo systemctl stop patchmonitor-agent
+sudo systemctl disable patchmonitor-agent
+sudo rm -rf /opt/patchmonitor-agent
+
+# Reinstall with latest version
+wget http://${window.location.hostname}:8001/api/agents/download/install.sh
+chmod +x install.sh
+sudo ./install.sh --server-url http://${window.location.hostname}:8001 --token ${agentToken?.agent_token || 'YOUR_TOKEN'}`}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
